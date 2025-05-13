@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>图书查询与借阅系统</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 20px auto; padding: 10px; }
+    h1 { text-align: center; }
+    input, button, select { font-size: 1em; padding: 10px; margin-top: 10px; width: 100%; box-sizing: border-box; }
+    #result, #log { margin-top: 20px; font-size: 1.1em; }
+    .hidden { display: none; }
+    #scanner { margin-top: 15px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>📚 图书查询与借阅系统</h1>
+
+  <!-- 扫码区域 -->
+  <button onclick="startScanner()">📷 启动扫码识别 ISBN</button>
+  <div id="scanner" style="width:100%; max-width:400px; margin:10px auto;"></div>
+
+  <!-- 图书查询 -->
+  <input type="text" id="bookName" placeholder="请输入书名或ISBN">
+  <button onclick="searchBook()">查询图书</button>
+
+  <div id="result"></div>
+
+  <!-- 借阅登记 -->
+  <div id="borrowSection" class="hidden">
+    <h3>填写借阅信息</h3>
+    <input type="text" id="borrower" placeholder="借阅人姓名">
+    <input type="text" id="idNumber" placeholder="证件号">
+    <button onclick="borrowBook()">提交借阅登记</button>
+  </div>
+
+  <div id="log"></div>
+
+  <!-- JS逻辑 -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    let books = [];
+    let selectedBook = null;
+
+    // 加载本地 books.json 数据
+    fetch('books.json')
+      .then(res => res.json())
+      .then(data => books = data)
+      .catch(err => {
+        document.getElementById('result').innerHTML = '❌ 无法加载图书数据';
+      });
+
+    function searchBook() {
+      const name = document.getElementById('bookName').value.trim();
+      const resultDiv = document.getElementById('result');
+      const borrowDiv = document.getElementById('borrowSection');
+      const logDiv = document.getElementById('log');
+      logDiv.innerHTML = '';
+      borrowDiv.classList.add('hidden');
+      if (!name) {
+        resultDiv.innerHTML = '❗ 请输入书名或 ISBN';
+        return;
+      }
+      const book = books.find(b => b.name.includes(name) || (b.isbn && b.isbn.includes(name)));
+      if (book) {
+        selectedBook = book;
+        if (book.status === '可借' && book.number > 0) {
+          resultDiv.innerHTML = `✅ 可借：${book.name}（剩余 ${book.number} 本）`;
+          borrowDiv.classList.remove('hidden');
+        } else {
+          resultDiv.innerHTML = `❌ 暂不可借：${book.name}（剩余 ${book.number} 本）`;
+        }
+      } else {
+        resultDiv.innerHTML = '❌ 未找到该书';
+      }
+    }
+
+    function borrowBook() {
+      const name = document.getElementById('borrower').value.trim();
+      const id = document.getElementById('idNumber').value.trim();
+      const logDiv = document.getElementById('log');
+      if (!name || !id) {
+        logDiv.innerHTML = '❗ 请填写完整信息';
+        return;
+      }
+      logDiv.innerHTML = `✅ 借阅登记成功：${selectedBook.name}<br>📌 借阅人：${name}<br>🆔 证件号：${id}`;
+      if (selectedBook.number > 0) {
+        selectedBook.number -= 1;
+        document.getElementById('result').innerHTML = `📖 剩余数量已更新：${selectedBook.number} 本`;
+      }
+      document.getElementById('borrower').value = '';
+      document.getElementById('idNumber').value = '';
+    }
+
+    function startScanner() {
+      const scannerDiv = document.getElementById("scanner");
+      scannerDiv.innerHTML = '';
+      const html5QrCode = new Html5Qrcode("scanner");
+      const config = { fps: 10, qrbox: 250 };
+      html5QrCode.start(
+        { facingMode: "environment" },
+        config,
+        (decodedText, decodedResult) => {
+          html5QrCode.stop().then(() => {
+            document.getElementById("bookName").value = decodedText;
+            scannerDiv.innerHTML = '📦 扫码成功：' + decodedText;
+            searchBook();
+          });
+        },
+        errorMessage => {
+          // 静默错误
+        }
+      ).catch(err => {
+        scannerDiv.innerHTML = '❌ 启动摄像头失败，请检查权限';
+      });
+    }
+  </script>
+</body>
+</html>
