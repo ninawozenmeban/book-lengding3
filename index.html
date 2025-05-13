@@ -29,11 +29,14 @@
   <div id="log"></div>
 
   <script>
-    let books = [
-      { name: "自然科学概论", status: "可借", number: 3 },
-      { name: "有机化学", status: "可借", number: 2 },
-      { name: "图书馆管理学", status: "不可借", number: 0 }
-    ];
+  let books = [];
+
+  fetch('books.json')
+  .then(res => res.json())
+  .then(data => books = data)
+  .catch(error => {
+    console.error("❌ 加载图书失败", error);
+  });
     let selectedBook = null;
 
     const scriptURL = 'https://script.google.com/macros/s/AKfycbzHJnzyGBFeY7sa9SDdBiRwnR-8BGcaGUsFHQqwUOGrXSUzpCouJknHI8sHt44NzcbNwA/exec';
